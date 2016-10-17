@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -31,6 +30,8 @@ public class Main extends Application {
 	protected TextArea previewtxa;
 	protected MainEventHandler mainEvent = new MainEventHandler();
 	protected Connection con; //connection variable for sql
+	protected File logFiles, econFiles;
+	protected File[] logList, econList;
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -122,16 +123,15 @@ public class Main extends Application {
 
 		@Override
 		public void handle(ActionEvent event) {
-			File logFiles = new File("../NaturalLogsOps/src/LogFiles");
-			File[] logList = logFiles.listFiles();
-			File econFiles = new File("../NaturalLogsOps/src/EconFiles");
-			File[] econList = econFiles.listFiles();
+
 			if(event.getSource().equals(fileUpdatebtn))
 			{
-				String text = "Log files that were added: \n";
 				selectLog.getItems().clear();
 				selectLog.getItems().add("--- Select Log File ---");
 				selectLog.getSelectionModel().selectFirst();
+				logFiles = new File("../NaturalLogsOps/src/LogFiles");
+				logList = logFiles.listFiles();
+				String text = "Log files that were added: \n";
 				for(File file : logList)
 				{
 					if(file.isFile())
@@ -140,11 +140,12 @@ public class Main extends Application {
 						text += file.getName() + "\n";
 					}
 				}
-
-				text += "\nEconomic files that were added: \n";
 				selectEcon.getItems().clear();
 				selectEcon.getItems().add("--- Select Econ File ---");
 				selectEcon.getSelectionModel().selectFirst();
+				econFiles = new File("../NaturalLogsOps/src/EconFiles");
+				econList = econFiles.listFiles();
+				text += "\nEconomic files that were added: \n";
 				for(File file : econList)
 				{
 					if(file.isFile())
@@ -195,7 +196,7 @@ public class Main extends Application {
 				//Need jdbc connector to be established for MySQL injection.
 				try {
 					Class.forName("com.mysql.jdbc.Driver");
-					con = DriverManager.getConnection("jdbc:mysql://localhost:3306/blaze?useSSL=false","root", "root");
+					con = DriverManager.getConnection("jdbc:mysql://localhost:3306/warehouse?useSSL=false","root", "root");
 				} catch(Exception e) {
 					previewtxa.setText("JDBC not implemented. ");
 					e.printStackTrace();
@@ -212,6 +213,18 @@ public class Main extends Application {
 	{
 		List<Log> loglist = new ArrayList<>();
 		List<Lumber> lumberlist = new ArrayList<>();
+
+		String text = "";
+
+		double ttlOne = 0.0;
+		double ttlTwo = 0.0;
+		double ttlThree = 0.0;
+		double ttlScrap = 0.0;
+		double ttlVal = 0.0;
+
+		Lumber lOne = new Lumber(1,1,1,0);
+		Lumber lTwo = new Lumber(1,1,1,0);
+		Lumber lThree = new Lumber(1,1,1,0);
 
 		Scanner scan = new Scanner(logs);
 
@@ -256,59 +269,51 @@ public class Main extends Application {
 
 		for(Log l: loglist)
 		{
-			Lumber lOne = lumberlist.get(0);
-			Lumber lTwo = lumberlist.get(1);
-			Lumber lThree = lumberlist.get(2);
+			//We need to implement a method for if the file only contains one type of lumber.
+			lOne = lumberlist.get(0);
+			lTwo = lumberlist.get(1);
+			lThree = lumberlist.get(2);
 			Lumber lScrap = lumberlist.get(3);
-			double scrap = 0.0;
 			Lumber[] priceOrder = new Lumber[3];
 
-			//double priceOne = lOne.calculateArea() * lOne.getValue();
-			//double priceTwo = lTwo.calculateArea() * lTwo.getValue();
-			//double priceThree = lThree.calculateArea() * lThree.getValue();
+			double scrap = 0.0;
 
-			double priceOne = lOne.getValue()/lOne.calculateArea();
-			double priceTwo = lTwo.getValue()/lTwo.calculateArea();
-			double priceThree = lThree.getValue()/lThree.calculateArea();
+			double priceOne = lOne.getValue() / lOne.calculateArea() ;
+			double priceTwo = lTwo.getValue() / lTwo.calculateArea() ;
+			double priceThree = lThree.getValue() / lThree.calculateArea() ;
 
-			if(priceOne > priceTwo)
+			if(priceOne >= priceTwo && priceOne >= priceThree)
 			{
-				if(priceOne > priceThree)
+				priceOrder[0] = lOne;
+				if(priceTwo >= priceThree)
 				{
-					priceOrder[0] = lOne;
-					if(priceTwo > priceThree)
-					{
-						priceOrder[1] = lTwo;
-						priceOrder[2] = lThree;
-					}
-					else
-					{
-						priceOrder[1] = lThree;
-						priceOrder[2] = lTwo;
-					}
+					priceOrder[1] = lTwo;
+					priceOrder[2] = lThree;
+				}
+				else
+				{
+					priceOrder[1] = lThree;
+					priceOrder[2] = lTwo;
 				}
 			}
-			else if(priceTwo > priceOne)
+			else if(priceTwo >= priceOne && priceTwo >= priceThree)
 			{
-				if(priceTwo > priceThree)
+				priceOrder[0] = lTwo;
+				if(priceOne >= priceThree)
 				{
-					priceOrder[0] = lTwo;
-					if(priceOne > priceThree)
-					{
-						priceOrder[1] = lOne;
-						priceOrder[2] = lThree;
-					}
-					else
-					{
-						priceOrder[1] = lThree;
-						priceOrder[2] = lOne;
-					}
+					priceOrder[1] = lOne;
+					priceOrder[2] = lThree;
+				}
+				else
+				{
+					priceOrder[1] = lThree;
+					priceOrder[2] = lOne;
 				}
 			}
 			else
 			{
 				priceOrder[0] = lThree;
-				if(priceTwo > priceOne)
+				if(priceTwo >= priceOne)
 				{
 					priceOrder[1] = lTwo;
 					priceOrder[2] = lOne;
@@ -325,16 +330,13 @@ public class Main extends Application {
 
 			int multi = (int) (l.getLength() / (int) lOne.getLength());
 
-			scrap += l.getHeight() * l.getWidth() * l.getLength() - lOne.getLength();
+			double scrapInches = l.getHeight() * l.getWidth() * (l.getLength() - lOne.getLength() * multi);
+			scrap += scrapInches / 1728;	// 12" x 12" x 12" = 1728
 
 			double maxHeight = l.getHeight() / lOne.getHeight();
 			double maxWidth = l.getWidth() / lOne.getWidth();
 			int lOneCount = (int) maxHeight * (int) maxWidth * multi;
 			double[] boards = new double[3];
-			for(double d: boards)
-			{
-				d= 0.0;
-			}
 
 			double heightLeft = l.getHeight() - lOne.getHeight() * maxHeight;
 			double widthLeft = l.getWidth() - lOne.getWidth() * maxWidth;
@@ -361,15 +363,22 @@ public class Main extends Application {
 			double lThreeValue = lThreeCount * lOne.getValue();
 			double scrapValue = scrap * lScrap.getValue();
 
-			String text = "";
+			ttlOne += lOneCount;
+			ttlTwo += lTwoCount;
+			ttlThree += lThreeCount;
+			ttlScrap += scrap;
+			ttlVal += lOneValue + lTwoValue + lThreeValue + scrapValue;
 
 			text += "" + lOne.getHeight() + "x" + lOne.getWidth() + "x" + lOne.getLength() +
 					": " + lOneCount + " $" + lOneValue + "\n" + lTwo.getHeight() + "x" + lTwo.getWidth() + "x" + lTwo.getLength() +
 					": " + lTwoCount + " $" + lTwoValue + "\n" + lThree.getHeight() + "x" + lThree.getWidth() + "x" + lThree.getLength() +
 					": " + lThreeCount + " $" + lThreeValue + "\n" + "Scrap: " + scrap + " $" + scrapValue + "\n\n";
-
-			previewtxa.setText(text);
 		}
+		text += "Total number of " + lOne.getHeight() + "x" + lOne.getWidth() + "x" + lOne.getLength() + ": " + ttlOne + "\n" +
+				"Total number of " + lTwo.getHeight() + "x" + lTwo.getWidth() + "x" + lTwo.getLength() + ": " + ttlTwo + "\n" +
+				"Total number of " + lThree.getHeight() + "x" + lThree.getWidth() + "x" + lThree.getLength() + ": " + ttlThree + "\n" +
+				"Total number of scrap: " + ttlScrap + "\n" + "Total value: $" + ttlVal;
+		previewtxa.setText(text);
 	}
 
 	private double[] Optimization(Log h, Log w, Lumber one, Lumber two, double[] boards)
@@ -407,12 +416,14 @@ public class Main extends Application {
 			{
 				double maxHeight = h.getHeight() / two.getHeight();
 				double maxWidth = h.getWidth() / two.getWidth();
-				boards[1] = (int) maxHeight * (int) maxWidth;
+				boards[0] = 0.0;
+				result = (int) maxHeight * (int) maxWidth;
+				boards[1] = (double)result;
 
 				double heightLeft = h.getHeight() - two.getHeight() * maxHeight;
 				double widthLeft = h.getWidth() - two.getWidth() * maxWidth;
 
-				boards[2] = heightLeft * widthLeft * two.getLength() / 12;
+				boards[2] = heightLeft * widthLeft * two.getLength() / 1728;
 			}
 		}
 		if(one.getHeight() < w.getHeight())
@@ -423,7 +434,8 @@ public class Main extends Application {
 				{
 					double maxHeight = w.getHeight() / one.getHeight();
 					double maxWidth = w.getWidth() / one.getWidth();
-					boards[0] = (int) maxHeight * (int) maxWidth;
+					result = (int) maxHeight * (int) maxWidth;
+					boards[0] = (double)result;
 
 					double heightLeft = w.getHeight() - one.getHeight() * maxHeight;
 					double widthLeft = w.getWidth() - one.getWidth() * maxWidth;
@@ -451,12 +463,14 @@ public class Main extends Application {
 				{
 					double maxHeight = w.getHeight() / two.getHeight();
 					double maxWidth = w.getWidth() / two.getWidth();
-					boards[1] = (int) maxHeight * (int) maxWidth;
+					result = (int) maxHeight * (int) maxWidth;
+					boards[0] = 0.0;
+					boards[1] = (double)result;
 
 					double heightLeft = w.getHeight() - two.getHeight() * maxHeight;
 					double widthLeft = w.getWidth() - two.getWidth() * maxWidth;
 
-					boards[2] = heightLeft * widthLeft * two.getLength() / 12;
+					boards[2] = heightLeft * widthLeft * two.getLength() / 1728;
 				}
 			}
 		}
@@ -477,16 +491,18 @@ public class Main extends Application {
 				double heightLeft = h.getHeight() - one.getHeight() * maxHeight;
 				double widthLeft = h.getWidth() - one.getWidth() * maxWidth;
 
-				boards[2] = heightLeft * widthLeft * one.getLength() / 12;
+				boards[2] = heightLeft * widthLeft * one.getLength() / 1728;
 			}
 			else
 			{
-				boards[2] = h.getHeight() * h.getWidth() * one.getLength() / 12;
+				boards[1] = 0.0;
+				boards[2] = h.getHeight() * h.getWidth() * one.getLength() / 1728;
 			}
 		}
 		else
 		{
-			boards[2] = h.getHeight() * h.getWidth() * one.getLength() / 12;
+			boards[1] = 0.0;
+			boards[2] = h.getHeight() * h.getWidth() * one.getLength() / 1728;
 		}
 		if(one.getHeight() < w.getHeight())
 		{
@@ -504,11 +520,13 @@ public class Main extends Application {
 			}
 			else
 			{
+				boards[1] = 0.0;
 				boards[2] = w.getHeight() * w.getWidth() * one.getLength() / 12;
 			}
 		}
 		else
 		{
+			boards[1] = 0.0;
 			boards[2] = w.getHeight() * w.getWidth() * one.getLength() / 12;
 		}
 		return boards;
